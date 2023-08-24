@@ -1,4 +1,7 @@
 from datetime import datetime
+import requests
+
+REQUEST_URL = "https://api.streambatch.io/async"
 
 class StreambatchConnection:
     def __init__(self,api_key,syncronous=True):
@@ -28,7 +31,8 @@ class StreambatchConnection:
             raise ValueError("You must set either polygons or points")
         if polygons is not None and points is not None:
             raise ValueError("You must set either polygons or points but not both")
-        
+
+        space = None # this will be set below 
         if polygons is not None:
             # polytons must either be a list or a dict. if it is not one of those, raise an error
             if not isinstance(polygons,dict) and not isinstance(polygons,list):
@@ -41,6 +45,7 @@ class StreambatchConnection:
                     # polygon must have two keys: "type" and "coordinates". if it does not, raise an error
                     if "type" not in polygon or "coordinates" not in polygon:
                         raise ValueError("Each polygon must have a 'type' and 'coordinates' key")
+                space = polygons
             # if polygons is a dict, it must have, each value must be a dics. if it is not, raise an error
             if isinstance(polygons,dict):
                 for key,value in polygons.items():
@@ -49,6 +54,9 @@ class StreambatchConnection:
                     # each value must have two keys: "type" and "coordinates". if it does not, raise an error
                     if "type" not in value or "coordinates" not in value:
                         raise ValueError("Each polygon must have a 'type' and 'coordinates' key")
+                # space is the iist of values from the dict
+                space = list(polygons.values())
+            print("Number of polygons: {}".format(len(space)))
 
         if points is not None:
             # points must be a list of lists. if it is not, raise an error
@@ -59,6 +67,9 @@ class StreambatchConnection:
                     raise ValueError("Points must be a list of lists")
                 if len(point) != 2:
                     raise ValueError("Each point must have two values: longitude and latitude")
+            space = points
+            print("Number of points: {}".format(len(space)))
+
         # aggregation must be either "mean" or "median". if it is not, raise an error
         if aggregation not in ["mean","median"]:
             raise ValueError("Aggregation must be either 'mean' or 'median'")
@@ -87,4 +98,10 @@ class StreambatchConnection:
         if not self.syncronous:
             raise ValueError("Asynchronous calls are not supported yet")
         time = {'start': start_date.strftime("%Y-%m-%d"), 'end': end_date.strftime("%Y-%m-%d"), 'unit': 'day'}
-        ndvi_request = {'variable': sources, 'space': space, 'time': time }
+        ndvi_request = {'variable': sources, 'space': space, 'time': time, 'aggregation': aggregation}
+        response = requests.post(REQUEST_URL, json=ndvi_request, headers=self.api_header)
+        if response.status_code != 200:
+            raise ValueError("Error: {}".format(response.text))
+        query_id = json.loads(response.content)['id']
+        access_url = json.loads(response.content)['access_url']
+        print("Query ID: {}".format(self.query_id))
