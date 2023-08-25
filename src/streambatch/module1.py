@@ -56,7 +56,7 @@ class StreambatchConnection:
     def validate_souces_input(self,sources):
         # if sources is None, then set it to a list containing one element, ndvi.streambatch
         if sources is None:
-            sources = ["ndvi.streambatch"]
+            sources = ["ndvi.sentinel2"]
         else:
             # if sources is not None, then it must be a list. if it is not, raise an error
             if not isinstance(sources,list):
@@ -85,7 +85,7 @@ class StreambatchConnection:
         return points
 
     
-    def request_ndvi(self,polygons=None,points=None,aggregation="mean",start_date=None,end_date=None,sources=None):
+    def request_ndvi(self,*,polygons=None,points=None,aggregation="median",start_date=None,end_date=None,sources=None):
         
         sources = self.validate_souces_input(sources)
 
@@ -97,6 +97,7 @@ class StreambatchConnection:
 
         space = None # this will be set below 
         if polygons is not None:
+            print("Polygons: {}".format(polygons))
             space = self.validate_polygon_input(polygons)
 
         elif points is not None:
