@@ -11,9 +11,8 @@ REQUEST_URL = "https://api.streambatch.io/async"
 STATUS_URL = "https://api.streambatch.io/check"
 
 class StreambatchConnection:
-    def __init__(self,api_key,syncronous=True,debug=False):
+    def __init__(self,api_key,debug=False):
         self.api_key = api_key
-        self.syncronous = syncronous
         self.debug = debug
     
     def make_request(self,ndvi_request):
@@ -86,7 +85,7 @@ class StreambatchConnection:
         return points
 
     
-    def get_ndvi(self,polygons=None,points=None,aggregation="mean",start_date=None,end_date=None,sources=None):
+    def request_ndvi(self,polygons=None,points=None,aggregation="mean",start_date=None,end_date=None,sources=None):
         
         sources = self.validate_souces_input(sources)
 
@@ -99,11 +98,9 @@ class StreambatchConnection:
         space = None # this will be set below 
         if polygons is not None:
             space = self.validate_polygon_input(polygons)
-            print("Number of polygons: {}".format(len(space)))
 
         elif points is not None:
             space = self.validate_point_input(points)
-            print("Number of points: {}".format(len(space)))
         else:
             raise ValueError("You must set either polygons or points")
 
@@ -131,16 +128,25 @@ class StreambatchConnection:
         if end_date < start_date:
             raise ValueError("end_date must be after start_date")
         
-        #if syncronous is False, the fail
-        if not self.syncronous:
-            raise ValueError("Asynchronous calls are not supported yet")
         t = {'start': start_date.strftime("%Y-%m-%d"), 'end': end_date.strftime("%Y-%m-%d"), 'unit': 'day'}
         ndvi_request = {'variable': sources, 'space': space, 'time': t, 'aggregation': aggregation}
         (query_id,access_url) = self.make_request(ndvi_request)
         print("Query ID: {}".format(query_id))
-        print("Waiting for results...",end="",flush=True)
+        print("Source: {}".format(sources))
+        if polygons is not None:
+            print("Number of polygons: {}".format(len(space)))
+        elif points is not None:
+            print("Number of points: {}".format(len(space)))
+        print("Start date: {}".format(start_date.strftime("%Y-%m-%d")))
+        print("End date: {}".format(end_date.strftime("%Y-%m-%d")))
+        print("Aggregation: {}".format(aggregation))
 
+
+        return query_id
+    
+    def get_data(self,query_id):
         final_status = None
+        access_url = f's3://streambatch-data/{query_id}.parquet'
         while final_status is None:
             status_response = requests.get('{}?query_id={}'.format(STATUS_URL, query_id), headers={'X-API-Key': self.api_key})
             status = json.loads(status_response.text)
@@ -156,7 +162,7 @@ class StreambatchConnection:
             print("Error: {}".format(status)) # !!! need to parse the error message
             return None
         else:
-            print("Success")
             df = pd.read_parquet(access_url, storage_options={"anon": True})
             # !!! need to add the polygon id to the dataframe
             return df
+
