@@ -7,5 +7,9 @@ sys.path.append(
 
 from streambatch.module1 import StreambatchConnection
 
-api_key = "1234567890"
-connection = StreambatchConnection(api_key,syncronous=True)
+api_key = open('key.txt').read().strip()
+connection = StreambatchConnection(api_key,syncronous=True,debug=True)
+points = [[3.940705,49.345238]]
+
+data = connection.get_ndvi(points=points,sources=["ndvi.sentinel2"])
+print(data)

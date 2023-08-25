@@ -5,17 +5,56 @@ import pyarrow.parquet # for reading parquet files (implicit dependency)
 import fsspec # for reading parquet files (implicit dependency)
 import s3fs # for reading parquet files (implicit dependency)
 import requests
+import time
 
 REQUEST_URL = "https://api.streambatch.io/async"
 STATUS_URL = "https://api.streambatch.io/check"
 
 class StreambatchConnection:
-    def __init__(self,api_key,syncronous=True):
+    def __init__(self,api_key,syncronous=True,debug=False):
         self.api_key = api_key
         self.syncronous = syncronous
+        self.debug = debug
     
-    def get_ndvi(self,polygons=None,points=None,aggregation="mean",start_date=None,end_date=None,sources=None):
-        
+    def make_request(self,ndvi_request):
+        if self.debug:
+            qid = '9d0f5cd7-87c5-4c84-b7f3-ef5c145d0680'
+            return (qid,f's3://streambatch-data/{qid}.parquet')
+        else:
+            response =  requests.post(REQUEST_URL, json=ndvi_request, headers={'X-API-Key': self.api_key})
+            if response.status_code != 200:
+                raise ValueError("Error: {}".format(response.text))
+            query_id = json.loads(response.content)['id']
+            access_url = json.loads(response.content)['access_url']
+            return (query_id,access_url)
+    
+    def validate_polygon_input(self,polygons):
+        space = None # this will be set below
+        # polytons must either be a list or a dict. if it is not one of those, raise an error
+        if not isinstance(polygons,dict) and not isinstance(polygons,list):
+            raise ValueError("Polygons must be a list or a dict")
+        # if polygons is a list, it must be a list of dicts. if it is not, raise an error
+        if isinstance(polygons,list):
+            for polygon in polygons:
+                if not isinstance(polygon,dict):
+                    raise ValueError("Polygons must be a list of dicts")
+                # polygon must have two keys: "type" and "coordinates". if it does not, raise an error
+                if "type" not in polygon or "coordinates" not in polygon:
+                    raise ValueError("Each polygon must have a 'type' and 'coordinates' key")
+            space = polygons
+        # if polygons is a dict, it must have, each value must be a dics. if it is not, raise an error
+        if isinstance(polygons,dict):
+            for key,value in polygons.items():
+                if not isinstance(value,dict):
+                    raise ValueError("Polygons must be a dict where the key is an id and value is a polygon")
+                # each value must have two keys: "type" and "coordinates". if it does not, raise an error
+                if "type" not in value or "coordinates" not in value:
+                    raise ValueError("Each polygon must have a 'type' and 'coordinates' key")
+            # space is the iist of values from the dict
+            space = list(polygons.values())
+        return space
+
+    def validate_souces_input(self,sources):
         # if sources is None, then set it to a list containing one element, ndvi.streambatch
         if sources is None:
             sources = ["ndvi.streambatch"]
@@ -31,6 +70,25 @@ class StreambatchConnection:
                 # if sources is not a valid sources, raise an error
                 if s not in valid_sources:
                     raise ValueError("sources must be one of the following: {}".format(valid_sources))
+        return sources
+    
+    def validate_point_input(self,points):
+        # points must be a list of lists. if it is not, raise an error
+        # !!! also should take dict of points
+        # and geojson points = [{"type":"Point","coordinates":[0,0]}]
+        if not isinstance(points,list):
+            raise ValueError("Points must be a list")
+        for point in points:
+            if not isinstance(point,list):
+                raise ValueError("Points must be a list of lists")
+            if len(point) != 2:
+                raise ValueError("Each point must have two values: longitude and latitude")
+        return points
+
+    
+    def get_ndvi(self,polygons=None,points=None,aggregation="mean",start_date=None,end_date=None,sources=None):
+        
+        sources = self.validate_souces_input(sources)
 
         # you must set either polygons or points but not both
         if polygons is None and points is None:
@@ -40,41 +98,11 @@ class StreambatchConnection:
 
         space = None # this will be set below 
         if polygons is not None:
-            # polytons must either be a list or a dict. if it is not one of those, raise an error
-            if not isinstance(polygons,dict) and not isinstance(polygons,list):
-                raise ValueError("Polygons must be a list or a dict")
-            # if polygons is a list, it must be a list of dicts. if it is not, raise an error
-            if isinstance(polygons,list):
-                for polygon in polygons:
-                    if not isinstance(polygon,dict):
-                        raise ValueError("Polygons must be a list of dicts")
-                    # polygon must have two keys: "type" and "coordinates". if it does not, raise an error
-                    if "type" not in polygon or "coordinates" not in polygon:
-                        raise ValueError("Each polygon must have a 'type' and 'coordinates' key")
-                space = polygons
-            # if polygons is a dict, it must have, each value must be a dics. if it is not, raise an error
-            if isinstance(polygons,dict):
-                for key,value in polygons.items():
-                    if not isinstance(value,dict):
-                        raise ValueError("Polygons must be a dict where the key is an id and value is a polygon")
-                    # each value must have two keys: "type" and "coordinates". if it does not, raise an error
-                    if "type" not in value or "coordinates" not in value:
-                        raise ValueError("Each polygon must have a 'type' and 'coordinates' key")
-                # space is the iist of values from the dict
-                space = list(polygons.values())
+            space = self.validate_polygon_input(polygons)
             print("Number of polygons: {}".format(len(space)))
 
         elif points is not None:
-            # points must be a list of lists. if it is not, raise an error
-            # !!! also should take dict of points
-            if not isinstance(points,list):
-                raise ValueError("Points must be a list")
-            for point in points:
-                if not isinstance(point,list):
-                    raise ValueError("Points must be a list of lists")
-                if len(point) != 2:
-                    raise ValueError("Each point must have two values: longitude and latitude")
-            space = points
+            space = self.validate_point_input(points)
             print("Number of points: {}".format(len(space)))
         else:
             raise ValueError("You must set either polygons or points")
@@ -106,19 +134,15 @@ class StreambatchConnection:
         #if syncronous is False, the fail
         if not self.syncronous:
             raise ValueError("Asynchronous calls are not supported yet")
-        time = {'start': start_date.strftime("%Y-%m-%d"), 'end': end_date.strftime("%Y-%m-%d"), 'unit': 'day'}
-        ndvi_request = {'variable': sources, 'space': space, 'time': time, 'aggregation': aggregation}
-        response = requests.post(REQUEST_URL, json=ndvi_request, headers=self.api_header)
-        if response.status_code != 200:
-            raise ValueError("Error: {}".format(response.text))
-        query_id = json.loads(response.content)['id']
-        access_url = json.loads(response.content)['access_url']
-        print("Query ID: {}".format(self.query_id))
+        t = {'start': start_date.strftime("%Y-%m-%d"), 'end': end_date.strftime("%Y-%m-%d"), 'unit': 'day'}
+        ndvi_request = {'variable': sources, 'space': space, 'time': t, 'aggregation': aggregation}
+        (query_id,access_url) = self.make_request(ndvi_request)
+        print("Query ID: {}".format(query_id))
         print("Waiting for results...",end="",flush=True)
 
         final_status = None
         while final_status is None:
-            status_response = requests.get('{}?query_id={}'.format(STATUS_URL, query_id), headers=self.api_header)
+            status_response = requests.get('{}?query_id={}'.format(STATUS_URL, query_id), headers={'X-API-Key': self.api_key})
             status = json.loads(status_response.text)
             if status['status'] == 'Succeeded':
                 final_status = 'Succeeded'
@@ -133,6 +157,6 @@ class StreambatchConnection:
             return None
         else:
             print("Success")
-            df = pd.read_parquet(self.access_url, storage_options={"anon": True})
+            df = pd.read_parquet(access_url, storage_options={"anon": True})
             # !!! need to add the polygon id to the dataframe
             return df
