@@ -1,7 +1,13 @@
 from datetime import datetime
+import json
+import pandas as pd
+import pyarrow.parquet # for reading parquet files (implicit dependency)
+import fsspec # for reading parquet files (implicit dependency)
+import s3fs # for reading parquet files (implicit dependency)
 import requests
 
 REQUEST_URL = "https://api.streambatch.io/async"
+STATUS_URL = "https://api.streambatch.io/check"
 
 class StreambatchConnection:
     def __init__(self,api_key,syncronous=True):
@@ -58,8 +64,9 @@ class StreambatchConnection:
                 space = list(polygons.values())
             print("Number of polygons: {}".format(len(space)))
 
-        if points is not None:
+        elif points is not None:
             # points must be a list of lists. if it is not, raise an error
+            # !!! also should take dict of points
             if not isinstance(points,list):
                 raise ValueError("Points must be a list")
             for point in points:
@@ -69,6 +76,8 @@ class StreambatchConnection:
                     raise ValueError("Each point must have two values: longitude and latitude")
             space = points
             print("Number of points: {}".format(len(space)))
+        else:
+            raise ValueError("You must set either polygons or points")
 
         # aggregation must be either "mean" or "median". if it is not, raise an error
         if aggregation not in ["mean","median"]:
@@ -105,3 +114,25 @@ class StreambatchConnection:
         query_id = json.loads(response.content)['id']
         access_url = json.loads(response.content)['access_url']
         print("Query ID: {}".format(self.query_id))
+        print("Waiting for results...",end="",flush=True)
+
+        final_status = None
+        while final_status is None:
+            status_response = requests.get('{}?query_id={}'.format(STATUS_URL, query_id), headers=self.api_header)
+            status = json.loads(status_response.text)
+            if status['status'] == 'Succeeded':
+                final_status = 'Succeeded'
+            elif status['status'] == 'Failed':
+                final_status = 'Failed'
+            else:
+                print(".",end="",flush=True)
+                time.sleep(5)
+        print("")
+        if final_status == 'Failed':
+            print("Error: {}".format(status)) # !!! need to parse the error message
+            return None
+        else:
+            print("Success")
+            df = pd.read_parquet(self.access_url, storage_options={"anon": True})
+            # !!! need to add the polygon id to the dataframe
+            return df
