@@ -7,8 +7,12 @@ import s3fs # for reading parquet files (implicit dependency)
 import requests
 import time
 
+from savgol import savgol
+
 REQUEST_URL = "https://api.streambatch.io/async"
 STATUS_URL = "https://api.streambatch.io/check"
+
+savgol_qids = [] # list of qids that requested savgol so that I can construct the final dataframe
 
 class StreambatchConnection:
     def __init__(self,api_key,debug=False):
@@ -18,7 +22,9 @@ class StreambatchConnection:
     def make_request(self,ndvi_request):
         if self.debug:
             # qid = '9d0f5cd7-87c5-4c84-b7f3-ef5c145d0680'
-            qid = '57c2cec3-8735-4713-9c9f-fbcd79fa96a8' # polygon
+            # qid = '57c2cec3-8735-4713-9c9f-fbcd79fa96a8' # polygon
+            # qid = '6f7f156b-aaa7-40f4-9efd-0ed07593bc6f' # s2 and l8 (for savgol)
+            qid = '2ad331cf-351d-4dc2-958c-89de81989d47' # s2 and l8 for savgol polygon
             return (qid,f's3://streambatch-data/{qid}.parquet')
         else:
             response =  requests.post(REQUEST_URL, json=ndvi_request, headers={'X-API-Key': self.api_key})
@@ -63,13 +69,13 @@ class StreambatchConnection:
             if not isinstance(sources,list):
                 raise ValueError("sources must be a list")
             # if sources is not None, then it must be a list of strings. if it is not, raise an error
-            valid_sources = ["ndvi.streambatch","ndvi.sentinel2","ndvi.modis","ndvi.landast"]
+            valid_sources = ["ndvi.streambatch","ndvi.sentinel2","ndvi.modis","ndvi.landsat"]
             for s in sources:
                 if not isinstance(s,str):
                     raise ValueError("sources must be a list of strings")
                 # if sources is not a valid sources, raise an error
                 if s not in valid_sources:
-                    raise ValueError("sources must be one of the following: {}".format(valid_sources))
+                    raise ValueError("Unknown source: {}. sources must be one of the following: {}".format(s,valid_sources))
         return sources
     
     def validate_point_input(self,points):
@@ -87,6 +93,14 @@ class StreambatchConnection:
 
     
     def request_ndvi(self,*,polygons=None,points=None,aggregation="median",start_date=None,end_date=None,sources=None):
+        if sources == ['ndvi.savgol']:
+            qid = self.request_ndvi_(sources=['ndvi.sentinel2','ndvi.landsat'],polygons=polygons,points=points,aggregation=aggregation,start_date=start_date,end_date=end_date)
+            savgol_qids.append(qid)
+            return qid
+        else:
+            return self.request_ndvi_(sources=sources,polygons=polygons,points=points,aggregation=aggregation,start_date=start_date,end_date=end_date)
+    
+    def request_ndvi_(self,*,polygons=None,points=None,aggregation="median",start_date=None,end_date=None,sources=None):
         
         sources = self.validate_souces_input(sources)
 
@@ -153,6 +167,14 @@ class StreambatchConnection:
         return query_id
     
     def get_data(self,query_id):
+        if query_id in savgol_qids:
+            df = self.get_data_(query_id)
+            # return self.get_data_(query_id)
+            return savgol(df)
+        else:
+            return self.get_data_(query_id)
+    
+    def get_data_(self,query_id):
         final_status = None
         access_url = f's3://streambatch-data/{query_id}.parquet'
         while final_status is None:
