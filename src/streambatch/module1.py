@@ -17,7 +17,8 @@ class StreambatchConnection:
     
     def make_request(self,ndvi_request):
         if self.debug:
-            qid = '9d0f5cd7-87c5-4c84-b7f3-ef5c145d0680'
+            # qid = '9d0f5cd7-87c5-4c84-b7f3-ef5c145d0680'
+            qid = '57c2cec3-8735-4713-9c9f-fbcd79fa96a8' # polygon
             return (qid,f's3://streambatch-data/{qid}.parquet')
         else:
             response =  requests.post(REQUEST_URL, json=ndvi_request, headers={'X-API-Key': self.api_key})
@@ -97,7 +98,6 @@ class StreambatchConnection:
 
         space = None # this will be set below 
         if polygons is not None:
-            print("Polygons: {}".format(polygons))
             space = self.validate_polygon_input(polygons)
 
         elif points is not None:
@@ -115,15 +115,22 @@ class StreambatchConnection:
         else:
             # if start_date is not None, then it must be a datetime object. if it is not, raise an error
             if not isinstance(start_date,datetime):
-                raise ValueError("start_date must be a datetime object")
+                # if it is a string, convert it to a datetime object
+                if isinstance(start_date,str):
+                    start_date = datetime.strptime(start_date,"%Y-%m-%d")
+                else:
+                    raise ValueError("start_date must be a a string yyyy-mm-dd or a datetime object")
         
         # if end_date is None, then set it to today
         if end_date is None:
             end_date = datetime.now()
         else:
-            # if end_date is not None, then it must be a datetime object. if it is not, raise an error
             if not isinstance(end_date,datetime):
-                raise ValueError("end_date must be a datetime object")
+                # if it is a string, convert it to a datetime object
+                if isinstance(end_date,str):
+                    end_date = datetime.strptime(end_date,"%Y-%m-%d")
+                else:
+                    raise ValueError("end_date must be a datetime object")
             
         # if end_date is before start_date, raise an error
         if end_date < start_date:
