@@ -24,7 +24,8 @@ class StreambatchConnection:
             # qid = '9d0f5cd7-87c5-4c84-b7f3-ef5c145d0680'
             # qid = '57c2cec3-8735-4713-9c9f-fbcd79fa96a8' # polygon
             # qid = '6f7f156b-aaa7-40f4-9efd-0ed07593bc6f' # s2 and l8 (for savgol)
-            qid = '2ad331cf-351d-4dc2-958c-89de81989d47' # s2 and l8 for savgol polygon
+            # qid = '2ad331cf-351d-4dc2-958c-89de81989d47' # s2 and l8 for savgol polygon
+            qid = '4b2bc7ff-09f5-4df2-b804-7d9f738b1160'
             return (qid,f's3://streambatch-data/{qid}.parquet')
         else:
             response =  requests.post(REQUEST_URL, json=ndvi_request, headers={'X-API-Key': self.api_key})

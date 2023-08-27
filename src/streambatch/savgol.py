@@ -104,6 +104,10 @@ def savgol_(m,s2,l8,window_length=20,polyorder=2):
 
     # Populate it with NDVI values where we have them and NaN where we don't
     m1 = pd.merge(m1, m, on="time", how="left")
+
+    # Interpolate missing values in the 'ndvi' column
+    m1["ndvi"] = m1["ndvi"].interpolate()
+
     m1 = m1.fillna(method='ffill') # forward fill the other columns like lat, lon, point, location, etc
 
     # if there is a column called "point" or "location" coerce it to int
@@ -112,8 +116,6 @@ def savgol_(m,s2,l8,window_length=20,polyorder=2):
     if "location" in m1.columns:
         m1["location"] = m1["location"].astype(int)
 
-    # Interpolate missing values in the 'ndvi' column
-    m1["ndvi"] = m1["ndvi"].interpolate()
 
     # Fill missing values with NaN, so the filter doesn't treat them as zeros
     # !!! there shouldnt be any missing values at this point. not sure I need this
@@ -122,8 +124,8 @@ def savgol_(m,s2,l8,window_length=20,polyorder=2):
     # Apply the savgol_filter to smooth the "ndvi" column
     m1["ndvi.savgol"] = savgol_filter(m1["ndvi"], window_length, polyorder)
 
-    # drop column ndvi
-    m1 = m1.drop(columns=['ndvi'])
+    # rename column ndvi to ndvi.interpolated
+    m1 = m1.rename(columns={'ndvi': 'ndvi.interpolated'})
 
     # now let's add two more columns with the original sentinel2 and landsat values
     # First S2
