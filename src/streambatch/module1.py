@@ -15,25 +15,16 @@ STATUS_URL = "https://api.streambatch.io/check"
 savgol_qids = [] # list of qids that requested savgol so that I can construct the final dataframe
 
 class StreambatchConnection:
-    def __init__(self,api_key,debug=False):
+    def __init__(self,api_key):
         self.api_key = api_key
-        self.debug = debug
     
     def make_request(self,ndvi_request):
-        if self.debug:
-            # qid = '9d0f5cd7-87c5-4c84-b7f3-ef5c145d0680'
-            # qid = '57c2cec3-8735-4713-9c9f-fbcd79fa96a8' # polygon
-            # qid = '6f7f156b-aaa7-40f4-9efd-0ed07593bc6f' # s2 and l8 (for savgol)
-            # qid = '2ad331cf-351d-4dc2-958c-89de81989d47' # s2 and l8 for savgol polygon
-            qid = '4b2bc7ff-09f5-4df2-b804-7d9f738b1160'
-            return (qid,f's3://streambatch-data/{qid}.parquet')
-        else:
-            response =  requests.post(REQUEST_URL, json=ndvi_request, headers={'X-API-Key': self.api_key})
-            if response.status_code != 200:
-                raise ValueError("Error: {}".format(response.text))
-            query_id = json.loads(response.content)['id']
-            access_url = json.loads(response.content)['access_url']
-            return (query_id,access_url)
+        response =  requests.post(REQUEST_URL, json=ndvi_request, headers={'X-API-Key': self.api_key})
+        if response.status_code != 200:
+            raise ValueError("Error: {}".format(response.text))
+        query_id = json.loads(response.content)['id']
+        access_url = json.loads(response.content)['access_url']
+        return (query_id,access_url)
     
     def validate_polygon_input(self,polygons):
         space = None # this will be set below
@@ -93,15 +84,17 @@ class StreambatchConnection:
         return points
 
     
-    def request_ndvi(self,*,polygons=None,points=None,aggregation="median",start_date=None,end_date=None,sources=None):
+    # request_ndvi()
+    # set query_id to a previous query id to skip the request completely. used for debugging and testing
+    def request_ndvi(self,*,polygons=None,points=None,aggregation="median",start_date=None,end_date=None,sources=None,debug=False,query_id=None):
         if sources == ['ndvi.savgol']:
-            qid = self.request_ndvi_(sources=['ndvi.sentinel2','ndvi.landsat'],polygons=polygons,points=points,aggregation=aggregation,start_date=start_date,end_date=end_date)
+            qid = self.request_ndvi_(sources=['ndvi.sentinel2','ndvi.landsat'],polygons=polygons,points=points,aggregation=aggregation,start_date=start_date,end_date=end_date,query_id=query_id)
             savgol_qids.append(qid)
             return qid
         else:
-            return self.request_ndvi_(sources=sources,polygons=polygons,points=points,aggregation=aggregation,start_date=start_date,end_date=end_date)
+            return self.request_ndvi_(sources=sources,polygons=polygons,points=points,aggregation=aggregation,start_date=start_date,end_date=end_date,query_id=query_id)
     
-    def request_ndvi_(self,*,polygons=None,points=None,aggregation="median",start_date=None,end_date=None,sources=None):
+    def request_ndvi_(self,*,polygons=None,points=None,aggregation="median",start_date=None,end_date=None,sources=None,query_id=None):
         
         sources = self.validate_souces_input(sources)
 
@@ -153,7 +146,11 @@ class StreambatchConnection:
         
         t = {'start': start_date.strftime("%Y-%m-%d"), 'end': end_date.strftime("%Y-%m-%d"), 'unit': 'day'}
         ndvi_request = {'variable': sources, 'space': space, 'time': t, 'aggregation': aggregation}
-        (query_id,access_url) = self.make_request(ndvi_request)
+        if query_id is None:
+            (query_id,access_url) = self.make_request(ndvi_request)
+        else:
+            # query_id = query_id
+            access_url = f's3://streambatch-data/{query_id}.parquet'
         print("Query ID: {}".format(query_id))
         print("Source: {}".format(sources))
         if polygons is not None:
