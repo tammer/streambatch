@@ -28,7 +28,7 @@ def remove_outliers(m):
     m1 = m.copy()
     m1 = find_outliers(m1)
     m2 = m1[m1['outlier']==False]
-    print(f"removed {m1.shape[0] - m2.shape[0]} outliers")
+    # print(f"removed {m1.shape[0] - m2.shape[0]} outliers")
     # print("here")
     # print(m2.head())
     # remove the last 5 columns of m2
@@ -42,7 +42,7 @@ def handle_duplicates(m):
     m1 = m.copy()
     m1['duplicate'] = m1['time'].eq(m1['time'].shift(-1))
     m2 = m1[m1['duplicate']==False]
-    print(f"removed {m1.shape[0] - m2.shape[0]} duplicates")
+    # print(f"removed {m1.shape[0] - m2.shape[0]} duplicates")
     m2 = m2.drop(columns=['duplicate'])
     return m2
 
@@ -84,31 +84,26 @@ def prepare(df):
     return (m, s2, l8)
 
 
-def savgol(df_,window_length=20,polyorder=2):
-    (m,s2,l8) = prepare(df_)
-    # print("After prepare")
-    # print(m.head())
-    # group by time, mean of ndvi (sometimes two observations on the same day)
-    # m = m.groupby('time').mean().reset_index() !!! doesnt work anyway, not accoutning for multiple points
+def savgol_(m,s2,l8,window_length=20,polyorder=2):
     m = remove_outliers(m)
     # print("After remove_outliers")
     # print(m.head())
     min_date = m["time"].min()
-    print(min_date)
+    # print(min_date)
     max_date = m["time"].max()
-    print(max_date)
+    # print(max_date)
     date_range = pd.date_range(min_date, max_date, freq='D')
-    print("date_range")
-    print(date_range.shape)
+    # print("date_range")
+    # print(date_range.shape)
 
     m1 = pd.DataFrame({"time": date_range})
 
     # Merge the original 'ndvi' values into the new DataFrame 'm1' using outer join
     m1 = pd.merge(m1, m, on="time", how="left")
-    print("m1")
-    print(m1.shape)
-    print(m1.head(2))
-    print(m1.tail(2))
+    # print("m1")
+    # print(m1.shape)
+    # print(m1.head(2))
+    # print(m1.tail(2))
 
     # replace any NAN with the value from the previous row
     # print("before ffil")
@@ -139,10 +134,10 @@ def savgol(df_,window_length=20,polyorder=2):
     temp = pd.merge(temp, s2, on="time", how="left")
     # drop column polygon
     temp = temp.drop(columns=['polygon'])
-    print("temp1")
-    print(temp.tail(20))
-    print(temp.shape)
-    print(m1.shape)
+    # print("temp1")
+    # print(temp.tail(20))
+    # print(temp.shape)
+    # print(m1.shape)
     m1['ndvi.sentinel2'] = temp['ndvi.sentinel2']
     # merge in the original ndvi.landsat values
     temp = pd.DataFrame({"time": date_range})
@@ -150,8 +145,24 @@ def savgol(df_,window_length=20,polyorder=2):
     # print("temp l8")
     # print(temp.tail(20))
     m1['ndvi.landsat'] = temp['ndvi.landsat']
-
-
-    
-
     return m1
+
+
+def savgol(df_,window_length=20,polyorder=2):
+    (m,s2,l8) = prepare(df_)
+    sort_col = 'point'
+    if m.columns[0] != 'point':
+        sort_col = 'location'
+
+    for p in m[sort_col].unique():
+        m1 = m[m[sort_col]==p]
+        s21 = s2[s2[sort_col]==p]
+        l81 = l8[l8[sort_col]==p]
+        m2 = savgol_(m1,s21,l81,window_length,polyorder)
+        if p==0:
+            m3 = m2
+        else:
+            m3 = pd.concat([m3, m2])
+    m3.reset_index(drop=True)
+    return m3
+    
