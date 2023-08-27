@@ -28,12 +28,23 @@ def remove_outliers(m):
     m1 = m.copy()
     m1 = find_outliers(m1)
     m2 = m1[m1['outlier']==False]
+    print(f"removed {m1.shape[0] - m2.shape[0]} outliers")
     # print("here")
     # print(m2.head())
     # remove the last 5 columns of m2
     m2 = m2.drop(columns=['rolling mean', 'rolling std', 'zscore', 'delta', 'outlier'])
     return m2
 
+def handle_duplicates(m):
+    # !!! a better solution is the choose the "better" observation based on before and after
+    # find successive rows with the same time
+    # if there are two rows with the same time, keep the first one
+    m1 = m.copy()
+    m1['duplicate'] = m1['time'].eq(m1['time'].shift(-1))
+    m2 = m1[m1['duplicate']==False]
+    print(f"removed {m1.shape[0] - m2.shape[0]} duplicates")
+    m2 = m2.drop(columns=['duplicate'])
+    return m2
 
 def prepare(df):
     # is this points or polygons?
@@ -63,13 +74,18 @@ def prepare(df):
     m = pd.concat([s2, l8])
     # sort by lat, time
     m = m.sort_values(by=[sort_col, 'time'])
+    m = handle_duplicates(m)
     # reset index
     m = m.reset_index(drop=True)
-    return m
+    # in s2, rename column ndvi to ndvi.sentinel2
+    s2 = s2.rename(columns={'ndvi': 'ndvi.sentinel2'})
+    # in l8, rename column ndvi to ndvi.landsat
+    l8 = l8.rename(columns={'ndvi': 'ndvi.landsat'})
+    return (m, s2, l8)
 
 
 def savgol(df_,window_length=20,polyorder=2):
-    m = prepare(df_)
+    (m,s2,l8) = prepare(df_)
     # print("After prepare")
     # print(m.head())
     # group by time, mean of ndvi (sometimes two observations on the same day)
@@ -78,12 +94,22 @@ def savgol(df_,window_length=20,polyorder=2):
     # print("After remove_outliers")
     # print(m.head())
     min_date = m["time"].min()
+    print(min_date)
     max_date = m["time"].max()
+    print(max_date)
     date_range = pd.date_range(min_date, max_date, freq='D')
+    print("date_range")
+    print(date_range.shape)
+
     m1 = pd.DataFrame({"time": date_range})
 
     # Merge the original 'ndvi' values into the new DataFrame 'm1' using outer join
     m1 = pd.merge(m1, m, on="time", how="left")
+    print("m1")
+    print(m1.shape)
+    print(m1.head(2))
+    print(m1.tail(2))
+
     # replace any NAN with the value from the previous row
     # print("before ffil")
     # print(m1.tail(30))
@@ -107,5 +133,25 @@ def savgol(df_,window_length=20,polyorder=2):
 
     # drop column ndvi
     m1 = m1.drop(columns=['ndvi'])
+
+    temp = pd.DataFrame({"time": date_range})
+    # merge in the original ndvi.sentinel2 values
+    temp = pd.merge(temp, s2, on="time", how="left")
+    # drop column polygon
+    temp = temp.drop(columns=['polygon'])
+    print("temp1")
+    print(temp.tail(20))
+    print(temp.shape)
+    print(m1.shape)
+    m1['ndvi.sentinel2'] = temp['ndvi.sentinel2']
+    # merge in the original ndvi.landsat values
+    temp = pd.DataFrame({"time": date_range})
+    temp = pd.merge(temp, l8, on="time", how="left")
+    # print("temp l8")
+    # print(temp.tail(20))
+    m1['ndvi.landsat'] = temp['ndvi.landsat']
+
+
+    
 
     return m1
