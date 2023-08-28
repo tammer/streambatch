@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "streambatch"
-version = "0.0.3"
+version = "0.0.5"
 authors = [
   { name="Tammer Kamel", email="tammer@tammer.com" },
 ]
