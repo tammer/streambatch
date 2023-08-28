@@ -7,7 +7,7 @@ import s3fs # for reading parquet files (implicit dependency)
 import requests
 import time
 
-from savgol import savgol
+from .savgol import savgol
 
 REQUEST_URL = "https://api.streambatch.io/async"
 STATUS_URL = "https://api.streambatch.io/check"
