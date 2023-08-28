@@ -7,7 +7,7 @@ from scipy.signal import savgol_filter
 # ndvi(t) is an outlier if:
 # 1) abs(zscore) > 1.5 (relative to it's neighbours on each side)
 # 2) it is "far" away from the mean in absolute terms too, i.e.
-#    ndvi(t) - mean > 0.15
+#    ndvi(t) - mean > 0.08
 #
 def find_outliers(m2):
     # compure zscore for every point using two points before and two points after each point
@@ -20,7 +20,7 @@ def find_outliers(m2):
     m2['rolling std'] = rolling_std
     m2['zscore'] = (m2['ndvi'] - rolling_mean) / rolling_std
     m2['delta'] = m2['ndvi'] - m2['rolling mean']
-    m2['outlier'] = (m2['delta'].abs() > 0.15) & (m2['zscore'].abs() > 1.5)
+    m2['outlier'] = (m2['delta'].abs() > 0.08) & (m2['zscore'].abs() > 1.5)
     return m2
 
 # remove_outliers()
@@ -60,7 +60,7 @@ def prepare(df):
     sort_col = 'point'
     if df.columns[0] != 'point':
         sort_col = 'location'
-    df.sort_values(by=[sort_col, 'time'])
+    df = df.sort_values(by=[sort_col, 'time'])
     # slice off all rows where qa.sentinel2 == 1
     s2 = df[df['qa.sentinel2'] == 1].copy()
     # remove columns ndvi.landsat, qa.landsat, qa.sentinel2
