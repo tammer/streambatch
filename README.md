@@ -16,6 +16,6 @@ This API provides up-to-date daily time series NDVI from 2013 to today for any l
 
     from streambatch import StreambatchConnection
     connection = StreambatchConnection(api_key=YOUR_API_KEY)
-    query_id = connection.request_ndvi(points=[[long,lat],[long,lat]...],sources=['ndvi.sentinel2'])
+    query_id = connection.request_ndvi(points=[[long,lat],[long,lat]...])
     data = connection.get_data(query_id)
 
