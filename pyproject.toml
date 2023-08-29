@@ -14,11 +14,11 @@ dependencies = [
 ]
 
 name = "streambatch"
-version = "0.1.0"
+version = "0.1.1"
 authors = [
   { name="Tammer Kamel", email="tammer@tammer.com" },
 ]
-description = "Wrapper for Streambatch API"
+description = "Use this package to get daily, 10m resolution NDVI time series data for any location on Earth via the Streambatch.io API."
 readme = "README.md"
 requires-python = ">=3.7"
 classifiers = [
