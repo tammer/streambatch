@@ -21,7 +21,7 @@ class StreambatchConnection:
     def make_request(self,ndvi_request):
         response =  requests.post(REQUEST_URL, json=ndvi_request, headers={'X-API-Key': self.api_key})
         if response.status_code != 200:
-            raise ValueError("Error: {}".format(response.text))
+            raise ValueError("{}".format(json.dumps(json.loads(response.text),indent=4)))
         query_id = json.loads(response.content)['id']
         access_url = json.loads(response.content)['access_url']
         return (query_id,access_url)

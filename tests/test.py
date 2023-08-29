@@ -12,9 +12,8 @@ from streambatch.module1 import StreambatchConnection
 
 api_key = open('key.txt').read().strip()
 
-connection = StreambatchConnection(open('key.txt').read().strip())
-# points = [[3.940705,49.345238],[3.940705,49.345238]]
-# # query_id = connection.request_ndvi(points=points, sources=['ndvi.sentinel2','ndvi.landsat'])
-# query_id = connection.request_ndvi(points=points, sources=['ndvi.savgol'])
-# df = connection.get_data(query_id)
-# print(df.tail(20))
+connection = StreambatchConnection(api_key=api_key)
+points = [[993.940705,9949.345238]]
+query_id = connection.request_ndvi(points=points, sources=['ndvi.sentinel2'])
+df = connection.get_data(query_id)
+print(df.tail(5))
