@@ -1,25 +1,18 @@
+<img src="http://www.tammer.com/logo.png" width="300">
+
 Streambatch is an API for time series NDVI data
 
-- **Documentation:** <todo>
+- **Documentation:** https://docs.streambatch.io/reference/streambatch-api
 - **Website:** https://www.streambatch.io
 - **Package source code:** https://github.com/tammer/streambatch
 
+This API provides up-to-date daily time series NDVI from 2013 to today for any location on Earth. You send a request to the server specifying any number of locations (single points or polygons).  The request is processed asynchronously. Data is returned as a pandas dataframe.
 
-This API provides:
-
-- up-to-date daily time series NDVI from 2013 to today
-
-Features
-
-- 10m resolution
-- daily
-- global
-
-Installation:
+### Installation
 
     pip install streambatch
 
-Example:
+### Example
 
     from streambatch import StreambatchConnection
     connection = StreambatchConnection(api_key=YOUR_API_KEY)
