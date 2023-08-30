@@ -55,7 +55,7 @@ class StreambatchConnection:
     def validate_souces_input(self,sources):
         # if sources is None, then set it to a list containing one element, ndvi.streambatch
         if sources is None:
-            sources = ["ndvi.sentinel2"]
+            sources = ["ndvi.sentinel2","ndvi.landsat"]
         else:
             # if sources is not None, then it must be a list. if it is not, raise an error
             if not isinstance(sources,list):
@@ -86,7 +86,9 @@ class StreambatchConnection:
     
     # request_ndvi()
     # set query_id to a previous query id to skip the request completely. used for debugging and testing
-    def request_ndvi(self,*,polygons=None,points=None,aggregation="median",start_date=None,end_date=None,sources=None,debug=False,query_id=None):
+    def request_ndvi(self,*,polygons=None,points=None,aggregation="median",start_date=None,end_date=None,sources=None,query_id=None):
+        if sources is None:
+            sources = ["ndvi.savgol"]
         if sources == ['ndvi.savgol']:
             qid = self.request_ndvi_(sources=['ndvi.sentinel2','ndvi.landsat'],polygons=polygons,points=points,aggregation=aggregation,start_date=start_date,end_date=end_date,query_id=query_id)
             savgol_qids.append(qid)
@@ -152,7 +154,6 @@ class StreambatchConnection:
             # query_id = query_id
             access_url = f's3://streambatch-data/{query_id}.parquet'
         print("Query ID: {}".format(query_id))
-        print("Source: {}".format(sources))
         if polygons is not None:
             print("Number of polygons: {}".format(len(space)))
         elif points is not None:
@@ -164,11 +165,18 @@ class StreambatchConnection:
 
         return query_id
     
-    def get_data(self,query_id):
+    def get_data(self,query_id,debug=False):
         if query_id in savgol_qids:
             df = self.get_data_(query_id)
-            # return self.get_data_(query_id)
-            return savgol(df)
+            df = savgol(df)
+            if( debug == True ):
+                return df
+            else:
+                # drop columns ndvi.sentinel2 and ndvi.landsat and ndvi.interpolated
+                df = df.drop(columns=['ndvi.sentinel2','ndvi.landsat','ndvi.interpolated'])
+                # rename column ndvi.savgol to ndvi
+                df = df.rename(columns={"ndvi.savgol":"ndvi"})
+                return df
         else:
             return self.get_data_(query_id)
     
