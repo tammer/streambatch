@@ -108,7 +108,7 @@ def savgol_(m,s2,l8,window_length=20,polyorder=2):
     # Interpolate missing values in the 'ndvi' column
     m1["ndvi"] = m1["ndvi"].interpolate()
 
-    m1 = m1.fillna(method='ffill') # forward fill the other columns like lat, lon, point, location, etc
+    m1 = m1.ffill() # forward fill the other columns like lat, lon, point, location, etc
 
     # if there is a column called "point" or "location" coerce it to int
     if "point" in m1.columns:
