@@ -1,9 +1,6 @@
 from datetime import datetime
 import json
 import pandas as pd
-import pyarrow.parquet # for reading parquet files (implicit dependency)
-import fsspec # for reading parquet files (implicit dependency)
-import s3fs # for reading parquet files (implicit dependency)
 import requests
 import time
 
@@ -180,12 +177,22 @@ class StreambatchConnection:
         else:
             return self.get_data_(query_id)
     
+    
+    # do this step in as a separate function so that I can mock it in the tests
+    def status(self,query_id):
+        status_response = requests.get('{}?query_id={}'.format(STATUS_URL, query_id), headers={'X-API-Key': self.api_key})
+        return status_response.text
+    
+    # do this step in as a separate function so that I can mock it in the tests
+    def read_parquet(self,access_url):
+        df = pd.read_parquet(access_url, storage_options={"anon": True})
+        return df
+
     def get_data_(self,query_id):
         final_status = None
         access_url = f's3://streambatch-data/{query_id}.parquet'
         while final_status is None:
-            status_response = requests.get('{}?query_id={}'.format(STATUS_URL, query_id), headers={'X-API-Key': self.api_key})
-            status = json.loads(status_response.text)
+            status = json.loads(self.status(query_id))
             if status['status'] == 'Succeeded':
                 final_status = 'Succeeded'
             elif status['status'] == 'Failed':
@@ -198,7 +205,7 @@ class StreambatchConnection:
             print("Error: {}".format(status)) # !!! need to parse the error message
             return None
         else:
-            df = pd.read_parquet(access_url, storage_options={"anon": True})
+            df = self.read_parquet(access_url)
             # !!! need to add the polygon id to the dataframe
             return df
 
