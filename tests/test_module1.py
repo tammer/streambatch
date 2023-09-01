@@ -167,6 +167,13 @@ class TestStreambatchConnection(unittest.TestCase):
         self.connection.read_parquet = MagicMock(return_value='12345')
         self.assertEqual(self.connection.get_data("1"), '12345')
 
+    def test_query_done(self):
+        self.connection.status = MagicMock(return_value='{"status":"Failed"}')
+        self.assertTrue(self.connection.query_done("1"))
+        self.connection.status = MagicMock(return_value='{"status":"Succeeded"}')
+        self.assertTrue(self.connection.query_done("1"))
+        self.connection.status = MagicMock(return_value='{"status":"Running"}')
+        self.assertFalse(self.connection.query_done("1"))
 
     # misc tests (old)
     def test_add(self):

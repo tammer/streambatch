@@ -209,3 +209,13 @@ class StreambatchConnection:
             # !!! need to add the polygon id to the dataframe
             return df
 
+    def query_done(self,query_id):
+        status = json.loads(self.status(query_id))
+        if status['status'] == 'Succeeded':
+            return True
+        elif status['status'] == 'Failed':
+            return True
+        else:
+            return False
+    
+

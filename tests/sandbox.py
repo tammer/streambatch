@@ -1,6 +1,8 @@
 import sys
 from pathlib import Path
 
+from time import sleep as time_sleep
+
 sys.path.append(
     str(Path(__file__).parent.parent.joinpath("src"))
 )
@@ -28,7 +30,10 @@ some_polygon = {
 }
 query_id2 = connection.request_ndvi(polygons=[some_polygon], sources=['ndvi.savgol'])
 
-
+while not connection.query_done(query_id1):
+    print("Waiting for query 1 to finish...")
+    time_sleep(10)
+print("It finished!")
 df = connection.get_data(query_id1)
 print(df.tail(5))
 
