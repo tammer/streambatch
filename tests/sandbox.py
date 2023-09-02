@@ -14,7 +14,7 @@ from streambatch.module1 import StreambatchConnection
 
 api_key = open('key.txt').read().strip()
 
-connection = StreambatchConnection(api_key=api_key)
+connection = StreambatchConnection(api_key=api_key,use_test_api=True)
 
 points = [[3.940705,49.345238]]
 query_id1 = connection.request_ndvi(points=points, sources=['ndvi.savgol'])
