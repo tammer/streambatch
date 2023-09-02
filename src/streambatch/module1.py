@@ -63,7 +63,7 @@ class StreambatchConnection:
             if not isinstance(sources,list):
                 raise ValueError("sources must be a list")
             # if sources is not None, then it must be a list of strings. if it is not, raise an error
-            valid_sources = ["ndvi.streambatch","ndvi.sentinel2","ndvi.modis","ndvi.landsat"]
+            valid_sources = ["ndvi.streambatch", 'ndvi.streambatch_v2', "ndvi.sentinel2","ndvi.modis","ndvi.landsat"]
             for s in sources:
                 if not isinstance(s,str):
                     raise ValueError("sources must be a list of strings")

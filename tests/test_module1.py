@@ -82,6 +82,11 @@ class TestStreambatchConnection(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.connection.validate_souces_input(sources)
 
+    def test_valid_sources_v2(self):
+        sources = ["ndvi.streambatch_v2"]
+        result = self.connection.validate_souces_input(sources)
+        self.assertEqual(result, sources)
+
     # Point validation
     
     def test_validate_point_input_valid(self):
