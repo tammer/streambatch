@@ -154,6 +154,8 @@ class TestStreambatchConnection(unittest.TestCase):
         polygons = [{"type": "Polygon", "coordinates": [[0, 0], [0, 1], [1, 1], [1, 0], [0, 0]]}]
         with self.assertRaises(ValueError):
             self.connection.request_ndvi_(polygons=polygons)
+    
+    # !!! TODO: test that sources defaults to what you want it to; same for aggregation
 
     # test get data
 
