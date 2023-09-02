@@ -8,12 +8,17 @@ from .savgol import savgol
 
 REQUEST_URL = "https://api.streambatch.io/async"
 STATUS_URL = "https://api.streambatch.io/check"
+READ_URL = "s3://streambatch-data"
 
 savgol_qids = [] # list of qids that requested savgol so that I can construct the final dataframe
 
 class StreambatchConnection:
-    def __init__(self,api_key):
+    def __init__(self,api_key,use_test_api=False):
         self.api_key = api_key
+        if use_test_api:
+            print("Using test API")
+            REQUEST_URL = "https://test.streambatch.io/async"
+            STATUS_URL = "https://test.streambatch.io/check"
     
     def make_request(self,ndvi_request):
         response =  requests.post(REQUEST_URL, json=ndvi_request, headers={'X-API-Key': self.api_key})
@@ -190,7 +195,7 @@ class StreambatchConnection:
 
     def get_data_(self,query_id):
         final_status = None
-        access_url = f's3://streambatch-data/{query_id}.parquet'
+        access_url = f'{READ_URL}/{query_id}.parquet'
         while final_status is None:
             status = json.loads(self.status(query_id))
             if status['status'] == 'Succeeded':
