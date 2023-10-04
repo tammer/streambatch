@@ -56,7 +56,7 @@ class StreambatchConnection:
     def validate_souces_input(self,sources):
         # if sources is None, then set it to a list containing one element, ndvi.streambatch
         if sources is None:
-            sources = ["ndvi.sentinel2","ndvi.landsat"]
+            sources = ["ndvi.streambatch_v2"]
         else:
             # if sources is not None, then it must be a list. if it is not, raise an error
             if not isinstance(sources,list):
@@ -89,7 +89,7 @@ class StreambatchConnection:
     # set query_id to a previous query id to skip the request completely. used for debugging and testing
     def request_ndvi(self,*,polygons=None,points=None,aggregation="median",start_date=None,end_date=None,sources=None,query_id=None):
         if sources is None:
-            sources = ["ndvi.savgol"]
+            sources = ["ndvi.streambatch_v2"]
         if sources == ['ndvi.savgol']:
             qid = self.request_ndvi_(sources=['ndvi.sentinel2','ndvi.landsat'],polygons=polygons,points=points,aggregation=aggregation,start_date=start_date,end_date=end_date,query_id=query_id)
             savgol_qids.append(qid)

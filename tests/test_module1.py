@@ -59,7 +59,7 @@ class TestStreambatchConnection(unittest.TestCase):
     
     def test_validate_sources_input_valid_default(self):
         sources = None
-        expected_result = ["ndvi.sentinel2", "ndvi.landsat"]
+        expected_result = ["ndvi.streambatch_v2"]
         result = self.connection.validate_souces_input(sources)
         self.assertEqual(result, expected_result)
     
