@@ -154,7 +154,46 @@ class TestStreambatchConnection(unittest.TestCase):
         polygons = [{"type": "Polygon", "coordinates": [[0, 0], [0, 1], [1, 1], [1, 0], [0, 0]]}]
         with self.assertRaises(ValueError):
             self.connection.request_ndvi_(polygons=polygons)
-    
+
+    def test_request_ndvi_with_location_ids_wrong_number(self):
+        location_ids = ["1", "2"]
+        polygons = [{"type": "Polygon", "coordinates": [[0, 0], [0, 1], [1, 1], [1, 0], [0, 0]]}]
+        sources = ["ndvi.sentinel2"]
+        start_date = datetime(2023, 1, 1)
+        end_date = datetime(2023, 8, 31)
+        with self.assertRaises(ValueError):
+            self.connection.request_ndvi_(polygons=polygons, location_ids=location_ids, sources=sources, start_date=start_date, end_date=end_date)
+
+    def test_request_ndvi_with_location_ids_not_unique(self):
+        location_ids = ["1", "1"]
+        polygons = [{"type": "Polygon", "coordinates": [[0, 0], [0, 1], [1, 1], [1, 0], [0, 0]]}]
+        sources = ["ndvi.sentinel2"]
+        start_date = datetime(2023, 1, 1)
+        end_date = datetime(2023, 8, 31)
+        with self.assertRaises(ValueError):
+            self.connection.request_ndvi_(polygons=polygons, location_ids=location_ids, sources=sources, start_date=start_date, end_date=end_date)  
+
+    def test_request_ndvi_with_location_ids_wrong_type(self):
+        location_ids = ["1", 1]
+        polygons = [{"type": "Polygon", "coordinates": [[0, 0], [0, 1], [1, 1], [1, 0], [0, 0]]}]
+        sources = ["ndvi.sentinel2"]
+        start_date = datetime(2023, 1, 1)
+        end_date = datetime(2023, 8, 31)
+        with self.assertRaises(ValueError):
+            self.connection.request_ndvi_(polygons=polygons, location_ids=location_ids, sources=sources, start_date=start_date, end_date=end_date)
+
+    def test_request_ndvi_with_location_ids_valid(self):
+        location_ids = ["1"]
+        polygons = [{"type": "Polygon", "coordinates": [[0, 0], [0, 1], [1, 1], [1, 0]]}]
+        sources = ["ndvi.sentinel2"]
+        start_date = datetime(2023, 1, 1)
+        end_date = datetime(2023, 8, 31)
+
+        self.connection.make_request = MagicMock(return_value=("1","2"))
+        
+        query_id = self.connection.request_ndvi_(polygons=polygons, location_ids=location_ids, sources=sources, start_date=start_date, end_date=end_date)
+        self.assertEqual(query_id, "1")
+
     # !!! TODO: test that sources defaults to what you want it to; same for aggregation
 
     # test get data
@@ -181,7 +220,7 @@ class TestStreambatchConnection(unittest.TestCase):
         self.assertTrue(self.connection.query_done("1"))
         self.connection.status = MagicMock(return_value='{"status":"Running"}')
         self.assertFalse(self.connection.query_done("1"))
-
+    
     # misc tests (old)
     def test_add(self):
         x = StreambatchConnection("api_key")

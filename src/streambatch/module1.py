@@ -87,17 +87,17 @@ class StreambatchConnection:
     
     # request_ndvi()
     # set query_id to a previous query id to skip the request completely. used for debugging and testing
-    def request_ndvi(self,*,polygons=None,points=None,aggregation="median",start_date=None,end_date=None,sources=None,query_id=None):
+    def request_ndvi(self,*,polygons=None,points=None,location_ids=None,aggregation="median",start_date=None,end_date=None,sources=None,query_id=None):
         if sources is None:
             sources = ["ndvi.streambatch_v2"]
         if sources == ['ndvi.savgol']:
-            qid = self.request_ndvi_(sources=['ndvi.sentinel2','ndvi.landsat'],polygons=polygons,points=points,aggregation=aggregation,start_date=start_date,end_date=end_date,query_id=query_id)
+            qid = self.request_ndvi_(sources=['ndvi.sentinel2','ndvi.landsat'],polygons=polygons,location_ids=location_ids,points=points,aggregation=aggregation,start_date=start_date,end_date=end_date,query_id=query_id)
             savgol_qids.append(qid)
             return qid
         else:
-            return self.request_ndvi_(sources=sources,polygons=polygons,points=points,aggregation=aggregation,start_date=start_date,end_date=end_date,query_id=query_id)
+            return self.request_ndvi_(sources=sources,polygons=polygons,points=points,location_ids=location_ids,aggregation=aggregation,start_date=start_date,end_date=end_date,query_id=query_id)
     
-    def request_ndvi_(self,*,polygons=None,points=None,aggregation="median",start_date=None,end_date=None,sources=None,query_id=None):
+    def request_ndvi_(self,*,polygons=None,points=None,location_ids=None,aggregation="median",start_date=None,end_date=None,sources=None,query_id=None):
         
         sources = self.validate_souces_input(sources)
 
@@ -146,9 +146,26 @@ class StreambatchConnection:
         # if end_date is before start_date, raise an error
         if end_date < start_date:
             raise ValueError("end_date must be after start_date")
-        
+
         t = {'start': start_date.strftime("%Y-%m-%d"), 'end': end_date.strftime("%Y-%m-%d"), 'unit': 'day'}
-        ndvi_request = {'variable': sources, 'space': space, 'time': t, 'aggregation': aggregation}
+        
+        if location_ids is None:
+            ndvi_request = {'variable': sources, 'space': space, 'time': t, 'aggregation': aggregation}
+        else:
+            # location_ids must be a list of strings. if it is not, raise an error
+            if not isinstance(location_ids,list):
+                raise ValueError("location_ids must be a list")
+            for location_id in location_ids:
+                if not isinstance(location_id,str):
+                    raise ValueError("location_ids must be a list of strings")
+            # location_ids must be list of the same length as space. if it is not, raise an error
+            if len(location_ids) != len(space):
+                raise ValueError("location_ids must be a list of the same length as space")
+            # each item in location_ids must be unique. if it is not, raise an error
+            if len(location_ids) != len(set(location_ids)):
+                raise ValueError("location_ids must be a list of unique values")
+            ndvi_request = {'variable': sources, 'space': space, 'time': t, 'aggregation': aggregation, 'location_id': location_ids}
+        
         if query_id is None:
             (query_id,access_url) = self.make_request(ndvi_request)
         else:
